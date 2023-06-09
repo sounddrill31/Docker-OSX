@@ -1,5 +1,4 @@
 from gitpod/workspace-full
-
 RUN sudo apt-get update
 RUN sudo apt-get install docker git neofetch
 RUN neofetch
