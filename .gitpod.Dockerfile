@@ -2,7 +2,9 @@ from gitpod/workspace-base
 RUN sudo apt-get update && sudo apt-get install docker git neofetch -y
 #RUN sudo pacman -S docker git neofetch
 RUN neofetch
-RUN docker build -t docker-osx --build-arg SHORTNAME=ventura .
+RUN ls
+#RUN docker build -t docker-osx --build-arg SHORTNAME=ventura .
+RUN docker build -t docker-osx --build-arg SHORTNAME=ventura Dockerfile.monterey
 RUN docker run -it \
     --device /dev/kvm \
     -p 50922:10022 \
