@@ -1,8 +1,8 @@
 from gitpod/workspace-full
 
-docker build -t docker-osx --build-arg SHORTNAME=ventura .
+RUN docker build -t docker-osx --build-arg SHORTNAME=ventura .
 
-docker run -it \
+RUN docker run -it \
     --device /dev/kvm \
     -p 50922:10022 \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
