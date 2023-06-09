@@ -1,5 +1,5 @@
 from gitpod/workspace-base
-RUN sudo apt-get update && sudo apt-get install docker git neofetch -y
+RUN sudo apt-get update && sudo apt-get install docker git neofetch qemu qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virt-manager libguestfs-tools -y
 #RUN sudo pacman -S docker git neofetch
 RUN neofetch
 RUN ls
