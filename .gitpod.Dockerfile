@@ -1,6 +1,7 @@
 from gitpod/workspace-base
-RUN sudo apt-get update
-RUN sudo apt-get install docker git neofetch
+#RUN sudo apt-get update
+RUN sudo pacman -S docker git neofetch
+#RUN sudo apt-get install docker git neofetch
 RUN neofetch
 RUN docker build -t docker-osx --build-arg SHORTNAME=ventura .
 RUN docker run -it \
