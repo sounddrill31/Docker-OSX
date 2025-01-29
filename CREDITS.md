@@ -30,7 +30,7 @@ This project now uses the fantastic OpenCore bootloader from the community OpenC
 
 [@jviotti](https://github.com/jviotti) - Auto-boot thru ShowPicker
 
-[@MrBenFTW](https://github.com/MrBenFTW) - Updated macOS version 10.15.5 -> 10.15.6, Enabled screen sharing port forwarding, Removed the need to remove 1gb from the partition.
+[@IAmBenMitchell]([https://github.com/MrBenFTW](https://github.com/iambenmitchell)) - Updated macOS version 10.15.5 -> 10.15.6, Enabled screen sharing port forwarding, Removed the need to remove 1gb from the partition.
 
 [@hoantp](https://github.com/hoantp) - Initialized TigerVNC 1.11.0 fix
 
@@ -127,5 +127,7 @@ This project now uses the fantastic OpenCore bootloader from the community OpenC
 [@felipestt](https://github.com/felipestt)  Use more CPU Cores/SMP' broken #440 
 
 [@routmoute](https://github.com/routmoute) README: add PulseAudio with WSLg #442 
-
 [@dulatello08](https://github.com/dulatello08) Update README.md #452
+
+[@Anthropohedron](https://github.com/Anthropohedron) Added FAQ.md
+

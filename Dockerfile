@@ -24,6 +24,7 @@
 #
 #       docker build -t docker-osx .
 #       docker build -t docker-osx --build-arg VERSION=10.15.5 --build-arg SIZE=200G .
+#       docker build -t docker-osx-sonoma --build-arg BRANCH=sonoma --build-arg SHORTNAME=sonoma .
 #
 # Basic Run:
 #
@@ -58,10 +59,12 @@ SHELL ["/bin/bash", "-c"]
 
 # change disk size here or add during build, e.g. --build-arg VERSION=10.14.5 --build-arg SIZE=50G
 ARG SIZE=200G
+ARG PARALLEL_DOWNLOADS=30
 
 # OPTIONAL: Arch Linux server mirrors for super fast builds
 # set RANKMIRRORS to any value other that nothing, e.g. -e RANKMIRRORS=true
-RUN perl -i -p -e s/^\#Color/Color$'\n'ParallelDownloads\ =\ 30/g /etc/pacman.conf 
+RUN perl -i -p -e s/^\#Color/Color$'\n'ParallelDownloads\ =\ ${PARALLEL_DOWNLOADS:=30}/g /etc/pacman.conf 
+
 ARG RANKMIRRORS
 ARG MIRROR_COUNTRY=US
 ARG MIRROR_COUNT=10
@@ -125,7 +128,7 @@ RUN tee -a sshd_config <<< 'AllowTcpForwarding yes' \
 
 USER arch
 
-# download OSX-KVM
+# download OSX-KVM for the submodules
 RUN git clone --recurse-submodules --depth 1 https://github.com/kholia/OSX-KVM.git /home/arch/OSX-KVM
 
 # enable ssh
@@ -151,16 +154,10 @@ RUN touch enable-ssh.sh \
 
 # RUN yes | sudo pacman -Syu qemu libvirt dnsmasq virt-manager bridge-utils edk2-ovmf netctl libvirt-dbus --overwrite --noconfirm
 
-RUN yes | sudo pacman -Syu bc qemu-desktop libvirt dnsmasq virt-manager bridge-utils openresolv jack2 ebtables edk2-ovmf netctl libvirt-dbus wget --overwrite --noconfirm \
+RUN yes | sudo pacman -Syu bc qemu-desktop libvirt dnsmasq virt-manager bridge-utils openresolv jack2 ebtables edk2-ovmf netctl libvirt-dbus wget scrot --overwrite --noconfirm \
     && yes | sudo pacman -Scc
 
 WORKDIR /home/arch/OSX-KVM
-
-ARG SHORTNAME=catalina
-
-RUN make \
-    && qemu-img convert BaseSystem.dmg -O qcow2 -p -c BaseSystem.img \
-    && rm ./BaseSystem.dmg
 
 # fix invalid signature on old libguestfs
 ARG SIGLEVEL=Never
@@ -172,6 +169,7 @@ RUN sudo tee -a /etc/pacman.conf <<< "SigLevel = ${SIGLEVEL}" \
 ARG LINUX=true
 
 # required to use libguestfs inside a docker container, to create bootdisks for docker-osx on-the-fly
+# reminder this is what makes :naked image larger than expected
 RUN if [[ "${LINUX}" == true ]]; then \
         sudo pacman -Syu linux linux-headers archlinux-keyring guestfs-tools mkinitcpio pcre pcre2 --noconfirm \
         && libguestfs-test-tool \
@@ -182,7 +180,7 @@ RUN if [[ "${LINUX}" == true ]]; then \
 # optional --build-arg to change branches for testing
 ARG BRANCH=master
 ARG REPO='https://github.com/sickcodes/Docker-OSX.git'
-RUN git clone --recurse-submodules --depth 1 --branch "${BRANCH}" "${REPO}"
+RUN git clone --recurse-submodules --depth 1 --branch "${BRANCH:=master}" "${REPO:=https://github.com/sickcodes/Docker-OSX.git}"
 
 RUN touch Launch.sh \
     && chmod +x ./Launch.sh \
@@ -197,7 +195,8 @@ RUN touch Launch.sh \
     && tee -a Launch.sh <<< '-cpu ${CPU:-Penryn},${CPUID_FLAGS:-vendor=GenuineIntel,+invtsc,vmware-cpuid-freq=on,+ssse3,+sse4.2,+popcnt,+avx,+aes,+xsave,+xsaveopt,check,}${BOOT_ARGS} \' \
     && tee -a Launch.sh <<< '-machine q35,${KVM-"accel=kvm:tcg"} \' \
     && tee -a Launch.sh <<< '-smp ${CPU_STRING:-${SMP:-4},cores=${CORES:-4}} \' \
-    && tee -a Launch.sh <<< '-usb -device usb-kbd -device usb-tablet \' \
+    && tee -a Launch.sh <<< '-device qemu-xhci,id=xhci \' \
+    && tee -a Launch.sh <<< '-device usb-kbd,bus=xhci.0 -device usb-tablet,bus=xhci.0 \' \
     && tee -a Launch.sh <<< '-device isa-applesmc,osk=ourhardworkbythesewordsguardedpleasedontsteal\(c\)AppleComputerInc \' \
     && tee -a Launch.sh <<< '-drive if=pflash,format=raw,readonly=on,file=/home/arch/OSX-KVM/OVMF_CODE.fd \' \
     && tee -a Launch.sh <<< '-drive if=pflash,format=raw,file=/home/arch/OSX-KVM/OVMF_VARS-1024x768.fd \' \
@@ -229,7 +228,7 @@ RUN grep -v InstallMedia ./Launch.sh > ./Launch-nopicker.sh \
 
 USER arch
 
-ENV USER arch
+ENV USER=arch
 
 # These are hardcoded serials for non-iMessage related research
 # Overwritten by using GENERATE_UNIQUE=true
@@ -354,7 +353,20 @@ VOLUME ["/tmp/.X11-unix"]
 # the default serial numbers are already contained in ./OpenCore/OpenCore.qcow2
 # And the default serial numbers
 
-CMD sudo touch /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true \
+# DMCA compliant download process
+# If BaseSystem.img does not exist, download ${SHORTNAME}
+
+# shortname default is catalina, which means :latest is catalina
+ENV SHORTNAME=sonoma
+
+ENV BASESYSTEM_IMAGE=BaseSystem.img
+
+CMD ! [[ -e "${BASESYSTEM_IMAGE:-BaseSystem.img}" ]] \
+        && printf '%s\n' "No BaseSystem.img available, downloading ${SHORTNAME}" \
+        && make \
+        && qemu-img convert BaseSystem.dmg -O qcow2 -p -c ${BASESYSTEM_IMAGE:-BaseSystem.img} \
+        && rm ./BaseSystem.dmg \
+    ; sudo touch /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true \
     ; sudo chown -R $(id -u):$(id -g) /dev/kvm /dev/snd "${IMAGE_PATH}" "${BOOTDISK}" "${ENV}" 2>/dev/null || true \
     ; [[ "${NOPICKER}" == true ]] && { \
         sed -i '/^.*InstallMedia.*/d' Launch.sh \
